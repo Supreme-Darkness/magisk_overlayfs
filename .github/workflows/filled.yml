@@ -1,0 +1,49 @@
+# GitHub Actions workflow for building the magisk_overlayfs module
+
+name: Build CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checks out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Sets up the Android NDK environment required for the build
+      - name: Setup Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          # Specify the NDK version required by the project
+          ndk-version: r23b
+          add-to-path: false # We will use the ANDROID_NDK_HOME env var instead
+
+      # 3. Make the build script executable
+      - name: Grant Execute Permission to Build Script
+        run: chmod +x build.sh
+
+      # 4. Run the build script to compile and package the module
+      - name: Build the Module
+        run: ./build.sh
+        env:
+          # Pass the NDK path to the build script
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+
+      # 5. Upload the generated ZIP file as a build artifact
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: magisk_overlayfs-zip
+          # The path to the generated zip file. The wildcard '*' handles version changes.
+          path: ./*-signed.zip
